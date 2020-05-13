@@ -185,14 +185,15 @@ class EarthView: SCNView {
     }
     
     func setupSliderView() {
-        slider.frame = CGRect(x: 0, y: frame.height - 500, width: 100, height: 40)
+        slider.frame = CGRect(x: 200, y: 0, width: 200, height: 40)
         slider.minValue = 0.0
+        slider.
         slider.maxValue = 100.0
         addSubview(slider)
     }
     
     func setUpTimerLabel() {
-        timerLabel.frame = CGRect(x: 230, y:frame.height - 100, width: 150, height:80)
+        timerLabel.frame = CGRect(x: 230, y: frame.height - 100, width: 150, height: 80)
         timerLabel.textColor = NSColor.white
         timerLabel.font = NSFont .systemFont(ofSize: 18)
         timerLabel.backgroundColor = NSColor.clear
@@ -219,38 +220,6 @@ class EarthView: SCNView {
 var player: AVAudioPlayer?
 
 let audioEngine = AVAudioEngine()
-
-func playSound() {
-    guard let url = Bundle.main.url(forResource: "night", withExtension: "mp3") else {
-        return
-    }
-    
-    do {
-//        player = try AVAudioPlayer(contentsOf: url)
-//        guard let player = player else {
-//            return
-//        }
-        
-        let audioPlayerNode = AVAudioPlayerNode()
-//        audioEngine.attach(audioPlayerNode)
-//        audioEngine.attach(reverb)
-//        audioEngine.attach(echo)
-//        audioEngine.attach(audioMixer)
-//        audioEngine.attach(micMixer)
-        
-        let file = try AVAudioFile(forReading: url)
-        audioPlayerNode.scheduleFile(file, at: nil, completionHandler: nil)
-//        try engine.start()
-        audioPlayerNode.play()
-
-//        player.setVolume(0.2, fadeDuration: 4)
-//        player.prepareToPlay()
-//        player.play()
-    } catch let error as NSError {
-        print(error.description)
-    }
-}
-
 let engine = AVAudioEngine()
 let speedControl = AVAudioUnitVarispeed()
 let pitchControl = AVAudioUnitTimePitch()
