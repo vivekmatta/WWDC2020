@@ -6,20 +6,25 @@ import AVFoundation
 import AVKit
 import UIKit
 
+// Global variables 
 var earthNodeRotationSpeed: CGFloat = CGFloat(Double.pi/40)
 var earthNode: SCNNode = SCNNode()
 var earthGeometry = SCNSphere(radius: 4.5)
 var cloudNode: SCNNode = SCNNode()
 var observerNode: SCNNode = SCNNode()
+let sunNode: SCNNode = SCNNode()
+let sunNodeRotationSpeed: CGFloat  = CGFloat(Double.pi/6)
+var earthNodeRotation: CGFloat = 0
+var sunNodeRotation: CGFloat = CGFloat(Double.pi/2)
+
+var player: AVAudioPlayer?
+let updateInterval = 0.05
+let animationDuration = 0.05
+let maxPowerDelta : CGFloat = 30
+let minScale : CGFloat = 0.9
 
 class EarthScene: SCNScene  {
-    let sunNode: SCNNode = SCNNode()
-    let sunNodeRotationSpeed: CGFloat  = CGFloat(Double.pi/6)
-    var earthNodeRotation: CGFloat = 0
-    var sunNodeRotation: CGFloat = CGFloat(Double.pi/2)
-    
-    override init()
-    {
+    override init() {
         super.init()
         setUpObserver()
         setUpSun()
@@ -27,66 +32,54 @@ class EarthScene: SCNScene  {
         setUpCloudsAndHalo()
     }
     
-    required init?(coder aDecoder: NSCoder)
-    {
+    required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func setUpObserver()
-    {
-        //Set up initial camera's position
+    // Setting up the initial position of the camera
+    func setUpObserver() {
         observerNode.camera = SCNCamera()
         observerNode.position = SCNVector3(x: 0, y: -2, z: 17)
         
         let observerLight = SCNLight()
         observerLight.type = SCNLight.LightType.ambient
         observerLight.color = UIColor(white: 0.01, alpha: 1.0)
-        observerLight.probeOffset = .init(x: 0, y: -2, z: 17)
         observerNode.light = observerLight
         
         rootNode.addChildNode(observerNode)
     }
     
-    func setUpSun()
-    {
-        //Set up sunlights postion
+    // Sets up sun node
+    func setUpSun() {
         let sunNodeLight = SCNLight()
         sunNodeLight.type = SCNLight.LightType.directional
         sunNode.light = sunNodeLight
         
-        // Set up roation vector
         sunNode.rotation = SCNVector4(x: 0.0, y: 1, z: 0.0, w: Float(CGFloat(sunNodeRotation)))
         rootNode.addChildNode(sunNode)
         
     }
     
-    func setUpEarth()
-    {
-        //Set up earth material with 4 different images
+    // Set up earth material with 4 images
+    func setUpEarth() {
         let earthMaterial = SCNMaterial()
         earthMaterial.ambient.contents = UIColor(white:  0.7, alpha: 1)
         earthMaterial.diffuse.contents = UIImage(named: "diffuse.jpg")
-        
         earthMaterial.specular.contents = UIImage(named: "specular.jpg")
-        
-        earthMaterial.specular.intensity = 1
-        
         earthMaterial.emission.contents = UIImage(named: "lights.jpg")
         earthMaterial.normal.contents = UIImage(named: "normal.jpg")
-        
+        earthMaterial.specular.intensity = 1
         earthMaterial.shininess = 0.05
         earthMaterial.multiply.contents = UIColor(white:  0.7, alpha: 1)
         
-        //Earth is a sphere with radius 5
         earthGeometry.firstMaterial = earthMaterial
         earthNode.geometry = earthGeometry
         
         rootNode.addChildNode(earthNode)
     }
     
-    func setUpCloudsAndHalo()
-    {
-        //Set up clouds material radius slightly bigger than earth
+    // Sets up clouds around the earth
+    func setUpCloudsAndHalo() {
         let clouds = SCNSphere(radius: 5.75)
         clouds.segmentCount = 120
         
@@ -97,45 +90,38 @@ class EarthScene: SCNScene  {
         cloudsMaterial.locksAmbientWithDiffuse = true
         cloudsMaterial.writesToDepthBuffer = false
         
-        // Load GLSL code snippet for Halo effects
         do {
-            if let path = Bundle.main.path(forResource: "halo", ofType: "glsl")
-            {
+            if let path = Bundle.main.path(forResource: "halo", ofType: "glsl") {
                 let shaderSource = try NSString(contentsOf: URL(fileURLWithPath: path), encoding: String.Encoding.utf8.rawValue)
                 cloudsMaterial.shaderModifiers = [SCNShaderModifierEntryPoint.fragment : shaderSource as String]
             }
         } catch {
-            //Catch errors
+            print(error)
         }
         
-        clouds.firstMaterial = cloudsMaterial;
+        clouds.firstMaterial = cloudsMaterial
         cloudNode.geometry = clouds
         cloudNode.opacity = 0.3
         
-        //Set roation vector
         cloudNode.rotation = SCNVector4Make(0, 1, 0, 0);
         earthNode.addChildNode(cloudNode)
         
     }
-    
-    //function to revole any node to the left
-    func revolve(node: SCNNode ,value: CGFloat, increase: CGFloat) -> CGFloat
-    {
+
+    func revolve(node: SCNNode, value: CGFloat, increase: CGFloat) -> CGFloat {
         var rotation = value
-        
-        if value < CGFloat(-Double.pi*2)
-        {
-            rotation = value + CGFloat(Double.pi*2)
+
+        if value < CGFloat(-Double.pi * 2) {
+            rotation = value + CGFloat(Double.pi * 2)
             node.rotation = SCNVector4(x: 0.0, y: 1.0, z: 0.0, w: Float(rotation))
         }
         
         return rotation - increase
     }
-    //To animate all the nodes in the whole scene
-    func animateEarthScene()
-    {
+
+    // Starts animation of earth and sun revolving
+    func animateEarthScene() {
         sunNodeRotation = revolve(node: sunNode, value: sunNodeRotation, increase: sunNodeRotationSpeed)
-        
         earthNodeRotation = revolve(node: earthNode, value: earthNodeRotation, increase: earthNodeRotationSpeed)
         
         SCNTransaction.begin()
@@ -151,48 +137,33 @@ class EarthScene: SCNScene  {
     }
 }
 
-//SCNView for presenting the Scene
-
 class EarthView: SCNView {
     let earthScene: EarthScene = EarthScene()
-    let timeFormatter: DateFormatter = DateFormatter()
     let timerLabel = UILabel()
-    let slider = UISlider()
-    let trebleSlider = UISlider()
+    let earthSpeedSlider = UISlider()
     let songSpeedSlider = UISlider()
     let volumeSlider = UISlider()
     let xAxisSlider = UISlider()
     let yAxisSlider = UISlider()
     let playButton = UIButton()
     let stopButton = UIButton()
-    
     let earthSpeedLabel = UILabel()
     let volumeLabel = UILabel()
     let xAxisLabel = UILabel()
     let yAxisLabel = UILabel()
     let songSpeedLabel = UILabel()
     
-    // 2: create the audio player
-    
-    
-    override init(frame: CGRect, options: [String : Any]? = nil)
-    {
+    override init(frame: CGRect, options: [String : Any]? = nil) {
         super.init(frame: frame, options: nil)
-        //Allow user to adjust viewing angle
         allowsCameraControl = false
         backgroundColor = .black
         autoenablesDefaultLighting = true
         scene = earthScene
+        setUpBackground()
         earthScene.animateEarthScene()
-        setUpTimerLabel()
         setupSlidersView()
         setUpLabels()
-        timeFormatter.dateFormat = "MMM d, yyyy \n h:mm a"
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] (Timer) in
-            self?.timerTick()
-        }
         startEarthBeat()
-        
     }
     
     func setUpLabels() {
@@ -229,9 +200,9 @@ class EarthView: SCNView {
     }
     
     func setupSlidersView() {
-        slider.frame = CGRect(x: 10, y: frame.height - 50, width: 100, height: 20)
-        slider.minimumValue = 0.0
-        slider.maximumValue = 100.0
+        earthSpeedSlider.frame = CGRect(x: 10, y: frame.height - 50, width: 100, height: 20)
+        earthSpeedSlider.minimumValue = 0.0
+        earthSpeedSlider.maximumValue = 100.0
         
         songSpeedSlider.frame = CGRect(x: 10, y: frame.height - 120, width: 100, height: 20)
         songSpeedSlider.minimumValue = 0.0
@@ -258,7 +229,7 @@ class EarthView: SCNView {
         stopButton.frame = CGRect(x: 460, y: frame.height - 50, width: 100, height: 20)
         stopButton.setTitle("Pause", for: .normal)
         
-        slider.addTarget(self, action: #selector(sliderDidChange(_:)), for: .touchUpInside)
+        earthSpeedSlider.addTarget(self, action: #selector(sliderDidChange(_:)), for: .touchUpInside)
         volumeSlider.addTarget(self, action: #selector(setUpVolumeSlider(_:)), for: .touchUpInside)
         songSpeedSlider.addTarget(self, action: #selector(setUpSongSpeedSlider(_:)), for: .touchUpInside)
         yAxisSlider.addTarget(self, action: #selector(setUpYAxisSlider(_:)), for: .touchUpInside)
@@ -266,7 +237,7 @@ class EarthView: SCNView {
         playButton.addTarget(self, action: #selector(setUpPlayButton(_:)), for: .touchUpInside)
         stopButton.addTarget(self, action: #selector(setUpStopButton(_:)), for: .touchUpInside)
         
-        addSubview(slider)
+        addSubview(earthSpeedSlider)
         addSubview(volumeSlider)
         addSubview(songSpeedSlider)
         addSubview(xAxisSlider)
@@ -275,8 +246,21 @@ class EarthView: SCNView {
         addSubview(stopButton)
     }
     
+    // Add particle emitter in background
+    func setUpBackground() {
+        let particlesNode = SCNNode()
+        let particleSystem = SCNParticleSystem(named: "Welcome.scnp", inDirectory: "")
+        guard let particles = particleSystem else {
+            return
+        }
+        particles.loops = true
+        particlesNode.addParticleSystem(particles)
+        earthScene.rootNode.addChildNode(particlesNode)
+        backgroundColor = .black
+        particlesNode.position = SCNVector3(0, 0, 0)
+    }
+    
     @objc func sliderDidChange(_ sender: UISlider) {
-        //print(sender.value)
         earthNodeRotationSpeed = CGFloat(Double.pi/40) + CGFloat(sender.value)
     }
     
@@ -304,27 +288,11 @@ class EarthView: SCNView {
         player?.pause()
     }
     
-    func setUpTimerLabel() {
-        timerLabel.frame = CGRect(x: 230, y: frame.height - 100, width: 150, height: 80)
-        timerLabel.textColor = .white
-        timerLabel.font = .systemFont(ofSize: 18)
-        timerLabel.backgroundColor = .clear
-        timerLabel.textAlignment = .right
-        timerLabel.numberOfLines = 0
-        
-        addSubview(timerLabel)
-    }
-    
-    func timerTick() {
-        //Update display time
-        timerLabel.text = timeFormatter.string(from: Date())
-    }
-    
-    required init?(coder aDecoder: NSCoder)
-    {
+    required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // Calculate the average power from the audio player
     func averagePowerFromAllChannels() -> CGFloat {
         var power : CGFloat = 0
         guard let numChannels = player?.numberOfChannels else {
@@ -337,6 +305,7 @@ class EarthView: SCNView {
         return power / CGFloat(numChannels)
     }
 
+    // Animate the earth based on calculated average power
     @objc func updateMeters() {
         player?.updateMeters()
         let power = averagePowerFromAllChannels()
@@ -345,10 +314,12 @@ class EarthView: SCNView {
         })
     }
 
+    // Creates a timer to automatically update meters in a given interval
     func startEarthBeat() {
         Timer.scheduledTimer(timeInterval: updateInterval, target: self, selector: #selector(updateMeters), userInfo: nil, repeats: true)
     }
 
+    // Animates earth to a specific radius and size
     func animate(to power : CGFloat) {
         let powerDelta = (maxPowerDelta + power) * 2 / 50
         let compute : CGFloat = minScale + powerDelta
@@ -358,14 +329,10 @@ class EarthView: SCNView {
         }
         radius.radius = scale + 3
     }
-    
 }
 
-// Creates music player
-var player: AVAudioPlayer?
-
+// This initializes the Playground view
 func playEarth() {
-    // 1: load the file
     let earthView = EarthView(frame:CGRect(x: 0, y: 0, width: 600, height: 600))
     PlaygroundPage.current.liveView = earthView
         
@@ -383,11 +350,6 @@ func playEarth() {
     player?.isMeteringEnabled = true
     player?.play()
 }
-
-let updateInterval = 0.05
-let animationDuration = 0.05
-let maxPowerDelta : CGFloat = 30
-let minScale : CGFloat = 0.9
 
 playEarth()
 
