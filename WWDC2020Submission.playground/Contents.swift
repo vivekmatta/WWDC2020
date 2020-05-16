@@ -9,16 +9,14 @@ import UIKit
 var earthNodeRotationSpeed: CGFloat = CGFloat(Double.pi/40)
 var earthNode: SCNNode = SCNNode()
 var earthGeometry = SCNSphere(radius: 4.5)
+var cloudNode: SCNNode = SCNNode()
+var observerNode: SCNNode = SCNNode()
 
 class EarthScene: SCNScene  {
-    let observerNode: SCNNode = SCNNode()
     let sunNode: SCNNode = SCNNode()
-    let cloudNode: SCNNode = SCNNode()
     let sunNodeRotationSpeed: CGFloat  = CGFloat(Double.pi/6)
-    //let earthNodeRotationSpeed: CGFloat = CGFloat(Double.pi/40)
     var earthNodeRotation: CGFloat = 0
     var sunNodeRotation: CGFloat = CGFloat(Double.pi/2)
-    
     
     override init()
     {
@@ -43,6 +41,7 @@ class EarthScene: SCNScene  {
         let observerLight = SCNLight()
         observerLight.type = SCNLight.LightType.ambient
         observerLight.color = UIColor(white: 0.01, alpha: 1.0)
+        observerLight.probeOffset = .init(x: 0, y: -2, z: 17)
         observerNode.light = observerLight
         
         rootNode.addChildNode(observerNode)
@@ -162,13 +161,15 @@ class EarthView: SCNView {
     let trebleSlider = UISlider()
     let songSpeedSlider = UISlider()
     let volumeSlider = UISlider()
-    let freqSlider = UISlider()
+    let xAxisSlider = UISlider()
+    let yAxisSlider = UISlider()
     let playButton = UIButton()
     let stopButton = UIButton()
     
     let earthSpeedLabel = UILabel()
     let volumeLabel = UILabel()
-    let freqLabel = UILabel()
+    let xAxisLabel = UILabel()
+    let yAxisLabel = UILabel()
     let songSpeedLabel = UILabel()
     
     // 2: create the audio player
@@ -183,14 +184,13 @@ class EarthView: SCNView {
         autoenablesDefaultLighting = true
         scene = earthScene
         earthScene.animateEarthScene()
-        // setUpTimerLabel()
+        setUpTimerLabel()
         setupSlidersView()
         setUpLabels()
         timeFormatter.dateFormat = "MMM d, yyyy \n h:mm a"
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] (Timer) in
             self?.timerTick()
         }
-        // playEarth()
         startEarthBeat()
         
     }
@@ -211,14 +211,20 @@ class EarthView: SCNView {
         volumeLabel.textColor = .lightGray
         volumeLabel.textAlignment = .center
         
-        freqLabel.frame = CGRect(x: 310, y: frame.height - 85, width: 100, height: 30)
-        freqLabel.text = "Frequency:"
-        freqLabel.textColor = .lightGray
-        freqLabel.textAlignment = .center
+        xAxisLabel.frame = CGRect(x: 160, y: frame.height - 85, width: 100, height: 30)
+        xAxisLabel.text = "X Axis:"
+        xAxisLabel.textColor = .lightGray
+        xAxisLabel.textAlignment = .center
+        
+        yAxisLabel.frame = CGRect(x: 310, y: frame.height - 85, width: 100, height: 30)
+        yAxisLabel.text = "Y Axis:"
+        yAxisLabel.textColor = .lightGray
+        yAxisLabel.textAlignment = .center
         
         addSubview(earthSpeedLabel)
         addSubview(volumeLabel)
-        addSubview(freqLabel)
+        addSubview(xAxisLabel)
+        addSubview(yAxisLabel)
         addSubview(songSpeedLabel)
     }
     
@@ -230,42 +236,41 @@ class EarthView: SCNView {
         songSpeedSlider.frame = CGRect(x: 10, y: frame.height - 120, width: 100, height: 20)
         songSpeedSlider.minimumValue = 0.0
         songSpeedSlider.maximumValue = 100.0
+        songSpeedSlider.value = 10.0
         
-        volumeSlider.frame = CGRect(x: 160, y: frame.height - 50, width: 100, height: 20)
+        volumeSlider.frame = CGRect(x: 160, y: frame.height - 120, width: 100, height: 20)
         volumeSlider.minimumValue = 0.0
         volumeSlider.maximumValue = 100.0
         
-        trebleSlider.frame = CGRect(x: 160, y: frame.height - 120, width: 100, height: 20)
-        trebleSlider.minimumValue = 0.0
-        trebleSlider.maximumValue = 100.0
+        xAxisSlider.frame = CGRect(x: 160, y: frame.height - 50, width: 100, height: 20)
+        xAxisSlider.minimumValue = -5.0
+        xAxisSlider.maximumValue = 5.0
+        xAxisSlider.value = 0
         
-        freqSlider.frame = CGRect(x: 310, y: frame.height - 50, width: 100, height: 20)
-        freqSlider.minimumValue = 0.0
-        freqSlider.maximumValue = 1000.0
+        yAxisSlider.frame = CGRect(x: 310, y: frame.height - 50, width: 100, height: 20)
+        yAxisSlider.minimumValue = -5.0
+        yAxisSlider.maximumValue = 5.0
+        yAxisSlider.value = -2
         
         playButton.frame = CGRect(x: 460, y: frame.height - 120, width: 100, height: 20)
         playButton.setTitle("Play", for: .normal)
-        //        playButton.minimumValue = 0.0
-        //        playButton.maximumValue = 100.0
         
         stopButton.frame = CGRect(x: 460, y: frame.height - 50, width: 100, height: 20)
         stopButton.setTitle("Pause", for: .normal)
-        //        stopButton.minimumValue = 0.0
-        //        stopButton.maximumValue = 100.0
         
         slider.addTarget(self, action: #selector(sliderDidChange(_:)), for: .touchUpInside)
         volumeSlider.addTarget(self, action: #selector(setUpVolumeSlider(_:)), for: .touchUpInside)
         songSpeedSlider.addTarget(self, action: #selector(setUpSongSpeedSlider(_:)), for: .touchUpInside)
-        trebleSlider.addTarget(self, action: #selector(setUpTrebleSlider(_:)), for: .touchUpInside)
-        freqSlider.addTarget(self, action: #selector(setUpFreqSlider(_:)), for: .touchUpInside)
+        yAxisSlider.addTarget(self, action: #selector(setUpYAxisSlider(_:)), for: .touchUpInside)
+        xAxisSlider.addTarget(self, action: #selector(setUpXAxisSlider(_:)), for: .touchUpInside)
         playButton.addTarget(self, action: #selector(setUpPlayButton(_:)), for: .touchUpInside)
         stopButton.addTarget(self, action: #selector(setUpStopButton(_:)), for: .touchUpInside)
         
         addSubview(slider)
         addSubview(volumeSlider)
         addSubview(songSpeedSlider)
-        addSubview(trebleSlider)
-        addSubview(freqSlider)
+        addSubview(xAxisSlider)
+        addSubview(yAxisSlider)
         addSubview(playButton)
         addSubview(stopButton)
     }
@@ -276,31 +281,26 @@ class EarthView: SCNView {
     }
     
     @objc func setUpVolumeSlider(_ sender: UISlider) {
-        //print(sender.value)
-        player?.volume = sender.value / 10
-    }
-    
-    @objc func setUpTrebleSlider(_ sender: UISlider) {
-        //print(sender.value)
         player?.volume = sender.value / 10
     }
     
     @objc func setUpSongSpeedSlider(_ sender: UISlider) {
-        // print(sender.value)
         player?.rate = sender.value / 10
     }
     
-    @objc func setUpFreqSlider(_ sender: UISlider) {
-        //print(sender.value)
+    @objc func setUpXAxisSlider(_ sender: UISlider) {
+        observerNode.position = SCNVector3(x: sender.value, y: observerNode.position.y, z: 17)
+    }
+    
+    @objc func setUpYAxisSlider(_ sender: UISlider) {
+        observerNode.position = SCNVector3(x: observerNode.position.x, y: sender.value, z: 17)
     }
     
     @objc func setUpPlayButton(_ sender: UIButton) {
-        //print(sender.value)
         player?.play()
     }
     
     @objc func setUpStopButton(_ sender: UIButton) {
-        //print(sender.value)
         player?.pause()
     }
     
@@ -309,7 +309,6 @@ class EarthView: SCNView {
         timerLabel.textColor = .white
         timerLabel.font = .systemFont(ofSize: 18)
         timerLabel.backgroundColor = .clear
-        //timerLabel.drawsBackground = false
         timerLabel.textAlignment = .right
         timerLabel.numberOfLines = 0
         
@@ -354,25 +353,10 @@ class EarthView: SCNView {
         let powerDelta = (maxPowerDelta + power) * 2 / 50
         let compute : CGFloat = minScale + powerDelta
         let scale : CGFloat = CGFloat.maximum(compute, minScale)
-//        let earthMaterial = SCNMaterial()
-//        earthMaterial.ambient.contents = UIColor(white:  0.7, alpha: 0)
-//        earthMaterial.diffuse.contents = UIImage(named: "diffuse.jpg")
-//
-//        earthMaterial.specular.contents = UIImage(named: "specular.jpg")
-//
-//        earthMaterial.specular.intensity = 1
-//
-//        earthMaterial.emission.contents = UIImage(named: "lights.jpg")
-//        earthMaterial.normal.contents = UIImage(named: "normal.jpg")
-//
-//        earthMaterial.shininess = 0.05
-//        earthMaterial.multiply.contents = UIColor(white:  0.7, alpha: 1)
-//
-//        //Earth is a sphere with radius 5
-//        earthNode.geometry = SCNSphere(radius: scale + 4)
-        var radius = earthNode.geometry as! SCNSphere
+        guard let radius = earthNode.geometry as? SCNSphere else {
+            return
+        }
         radius.radius = scale + 3
-        // earthNode.geometry?.firstMaterial = earthMaterial
     }
     
 }
@@ -405,7 +389,6 @@ let animationDuration = 0.05
 let maxPowerDelta : CGFloat = 30
 let minScale : CGFloat = 0.9
 
-// play()
 playEarth()
 
 
