@@ -336,7 +336,8 @@ func playEarth() {
     let earthView = EarthView(frame:CGRect(x: 0, y: 0, width: 600, height: 600))
     PlaygroundPage.current.liveView = earthView
         
-    if let url = Bundle.main.url(forResource: "YACHT", withExtension: "mp3") {
+    // https://www.youtube.com/audiolibrary/music?nv=1
+    if let url = Bundle.main.url(forResource: "YACHT-song", withExtension: "mp3") {
         do {
             player = try AVAudioPlayer(contentsOf: url)
         }
